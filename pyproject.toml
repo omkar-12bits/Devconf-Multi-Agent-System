@@ -1,0 +1,34 @@
+[project]
+name = "devconf-multi-agent-system"
+version = "0.1.0"
+description = ""
+authors = []
+readme = "README.md"
+requires-python = ">=3.13, <=3.14"
+dependencies = [
+    "litellm (>=1.72.4,<1.76.3)",
+    "dotenv (>=0.9.9,<0.10.0)",
+    "uvicorn (>=0.37.0,<0.38.0)",
+    "pyjwt (>=2.8.0,<3.0.0)",
+    "httpx (>=0.28.1,<1.0.0)",
+    "openinference-instrumentation-google-adk (>=0.1.6,<0.2.0)",
+    "langfuse (>=3.9.0,<4.0.0)",
+    "pydantic-settings (>=2.12.0,<3.0.0)",
+    "asgi-correlation-id (>=4.0.0,<5.0.0)",
+    "sqlalchemy[asyncio] (>=2.0.0,<3.0.0)",
+    "pymysql (>=1.1.0,<2.0.0)",
+    "greenlet (>=3.0.0,<4.0.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "alembic (>=1.18.1,<2.0.0)",
+    "fastapi (>=0.128.0,<0.129.0)",
+    "google-adk (==1.18.0)",
+    "a2a-sdk[all] (>=0.3.22,<0.4.0)",
+    "openai (>=2.15.0,<3.0.0)",
+]
+
+[tool.poetry]
+packages = [{include = "orchestrator", from = "src"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

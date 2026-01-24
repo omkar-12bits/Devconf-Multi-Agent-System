@@ -1,0 +1,28 @@
+{
+    "capabilities": {
+  
+    },
+    "defaultInputModes": [
+      "text/plain"
+    ],
+    "defaultOutputModes": [
+      "text/plain"
+    ],
+    "description": "An ADK Agent",
+    "name": "google_search_agent",
+    "preferredTransport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "skills": [
+      {
+        "description": "\nI am a Google search agent. I am given a query and I need to search Google for the best answer to the query.\n",
+        "id": "google_search_agent",
+        "name": "model",
+        "tags": [
+          "llm"
+        ]
+      }
+    ],
+    "supportsAuthenticatedExtendedCard": false,
+    "url": "http://localhost:8001",
+    "version": "0.0.1"
+  }

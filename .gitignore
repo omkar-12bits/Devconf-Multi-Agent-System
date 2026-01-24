@@ -1,0 +1,44 @@
+# Python cache
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.coverage
+*.pyc
+
+# env files
+*.env
+.env
+.envrc
+
+# virtual environment
+.venv/
+
+# cursor files
+.cursorignore
+
+# Visual Studio Code
+.vscode/
+
+# Evals
+.deepeval/
+**/.adk/
+
+# Evaluation results (keep structure, not outputs)
+evaluation/results/*.json
+evaluation/results/*.csv
+evaluation/reports/*.html
+evaluation/reports/*.csv
+!evaluation/results/.gitkeep
+!evaluation/reports/.gitkeep
+
+# Secrets/Credentials
+**/.jwt-token
+
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+.history
+.history/
+.localdev/
+*.sensitive
