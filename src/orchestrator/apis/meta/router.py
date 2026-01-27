@@ -1,13 +1,11 @@
 import logging
 import httpx
 from fastapi import APIRouter, Response, Request, status
-from starlette.concurrency import run_in_threadpool
 from google.adk.agents.remote_a2a_agent import AGENT_CARD_WELL_KNOWN_PATH
 
 from orchestrator.apis.meta.models import HealthCheck, StatusChecks, StatusCheckValue
 from orchestrator.apis.meta.status import StatusCheck, status_check
 from orchestrator.config import app_cfg
-from orchestrator.db.base import db_connection_check
 
 
 logger = logging.getLogger(__name__)
@@ -76,41 +74,6 @@ async def adk_runner_status(request: Request) -> dict:
         return {"status": StatusCheckValue.DOWN}
 
 
-@status_check(name="google-api")
-async def google_api_status() -> dict:
-    """Check if Google API key is configured."""
-    try:
-        if app_cfg.GOOGLE_API_KEY:
-            return {"status": StatusCheckValue.OK}
-        else:
-            return {"status": StatusCheckValue.DOWN}
-    except Exception as e:
-        logger.error(f"Google API check error: {e}")
-        return {"status": StatusCheckValue.DOWN}
-
-
-@status_check(name="granite-guardian")
-async def granite_guardian_status() -> dict:
-    """Check if Granite Guardian (safety model) is accessible."""
-    if not app_cfg.INPUT_GUARDRAILS_ENABLED:
-        return {"status": StatusCheckValue.DISABLED}
-    
-    base_url_v1 = app_cfg.GRANITE_GUARDIAN_HOST
-    url = base_url_v1.replace("/v1", "/health")
-    headers = {"Authorization": f"Bearer {app_cfg.GRANITE_GUARDIAN_API_KEY}"}
-    
-    try:
-        async with httpx.AsyncClient(verify=app_cfg.VERIFY_SSL, timeout=app_cfg.DEFAULT_TIMEOUT) as client:
-            response = await client.get(url, headers=headers)
-            if response.status_code == 200:
-                return {"status": StatusCheckValue.OK}
-            else:
-                return {"status": StatusCheckValue.DOWN}
-    except Exception as e:
-        logger.error(f"Granite Guardian connection error: {e}")
-        return {"status": StatusCheckValue.DOWN}
-
-
 @status_check(name="google-search-agent")
 async def google_search_agent_status() -> dict:
     """Check if google_search_agent service is accessible."""
@@ -148,24 +111,6 @@ async def github_agent_status() -> dict:
     except Exception as e:
         logger.error(f"github_agent connection error: {e}")
         return {"status": StatusCheckValue.DOWN}
-
-@status_check(name="database")
-async def database_status(request: Request = None) -> dict:
-    """Check database connection (if enabled)."""
-    if not app_cfg.USE_DATABASE_SESSIONS:
-        return {"status": StatusCheckValue.DISABLED}
-    
-    try:
-        is_healthy = await run_in_threadpool(db_connection_check)
-        
-        if is_healthy:
-            return {"status": StatusCheckValue.OK}
-        else:
-            return {"status": StatusCheckValue.DOWN}
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        return {"status": StatusCheckValue.DOWN}
-
 
 @meta_router.get("/status", status_code=status.HTTP_200_OK, operation_id="status_check")
 async def service_status(

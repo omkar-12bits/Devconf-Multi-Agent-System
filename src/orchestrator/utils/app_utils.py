@@ -1,5 +1,4 @@
 import logging
-import json
 from typing import List, Optional
 
 from a2a.types import Message as A2aMessage
@@ -324,69 +323,3 @@ def merge_event_text_parts(events: list[Event]) -> Event:
     return merged_event
 
 
-def _extract_agent_from_function_call(function_call) -> str | None:
-    """Extract agent_name from a function_call object."""
-    if not function_call or function_call.get('name') != 'transfer_to_agent':
-        return None
-    
-    args = function_call.get('args', {})
-    return args.get('agent_name')
-
-
-def _extract_agent_from_orm_event(event) -> str | None:
-    """Extract agent from ORM Event object (has .content as JSON string)."""
-    if not (hasattr(event, 'content') and isinstance(event.content, (str, dict))):
-        return None
-    
-    try:
-        event_data = json.loads(event.content) if isinstance(event.content, str) else event.content
-        
-        if not event_data or event_data.get('role') == 'user':
-            return None
-        
-        parts = event_data.get('parts', [])
-        for part in parts:
-            if not isinstance(part, dict) or 'function_call' not in part:
-                continue
-            
-            agent_name = _extract_agent_from_function_call(part['function_call'])
-            if agent_name:
-                return agent_name
-        
-        return None
-        
-    except (json.JSONDecodeError, KeyError, TypeError):
-        return None
-
-
-def extract_sub_agent_name_from_events(events: List) -> str | None:
-    """
-    Extract which sub-agent was called from transfer_to_agent function calls.
-    
-    Args:
-        events: List of ORM Event objects from database
-        
-    Returns:
-        Agent name (e.g., "google_search_agent", "github_agent") or None if not found
-    """
-    for event in events:
-        agent_name = _extract_agent_from_orm_event(event)
-        if agent_name:
-            logger.debug(f"Extracted agent from ORM event: {agent_name}")
-            return agent_name
-    
-    # Fallback: string matching
-    for event in events:
-        try:
-            event_str = str(event).lower()
-            if "google_search_agent" in event_str:
-                logger.debug("Found agent via string matching: google_search_agent")
-                return "google_search_agent"
-            elif "github_agent" in event_str:
-                logger.debug("Found agent via string matching: github_agent")
-                return "github_agent"
-        except Exception:
-            continue
-    
-    logger.debug("No agent found in events")
-    return None

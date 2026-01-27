@@ -24,21 +24,16 @@ class ApiConfig(BaseSettings):
     VERIFY_SSL: bool = False
     DEFAULT_TIMEOUT: int | None = None
 
-    # Granite Guardian for Input Guardrails
-    GRANITE_SHIELD_ID: str = "ibm-granite/granite-guardian-3.3-8b"
-    GRANITE_GUARDIAN_HOST: str = ""
-    GRANITE_GUARDIAN_API_KEY: str = ""
+    # Input Guardrails Configuration
     INPUT_GUARDRAILS_ENABLED: bool = True
+    GUARDRAILS_MODEL: str = "openai/gpt-oss-120b"
+    GUARDRAILS_CONFIDENCE_THRESHOLD: float = 0.7
     
     # Langfuse Tracing Configuration
     LANGFUSE_TRACING_ENABLED: bool = False
     LANGFUSE_SECRET_KEY: str = ""
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_BASE_URL: str = "http://localhost:3000"
-
-    # Database Configuration for Session Storage
-    USE_DATABASE_SESSIONS: bool = False
-    DATABASE_URL: str = ""
 
     @field_validator("VERIFY_SSL", mode="before")
     def convert_verify_ssl(cls, value):
