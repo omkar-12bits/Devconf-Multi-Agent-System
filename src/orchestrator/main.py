@@ -6,9 +6,7 @@ from orchestrator.middleware import configure_middleware
 from orchestrator.exception_handlers import unhandled_exception_handler
 from orchestrator.lifespan import lifespan
 from orchestrator.apis.conversations.router import conversation_router
-from orchestrator.apis.history.router import history_router
 from orchestrator.apis.meta.router import meta_router
-from orchestrator.apis.feedback.router import feedback_router
 from orchestrator.config import app_cfg
 
 logging.basicConfig(
@@ -32,8 +30,6 @@ api = configure_middleware(api)
 
 api.include_router(meta_router, prefix=app_cfg.API_ROUTER_PATH_PREFIX)
 api.include_router(conversation_router, prefix=app_cfg.API_ROUTER_PATH_PREFIX)
-api.include_router(history_router, prefix=app_cfg.API_ROUTER_PATH_PREFIX)
-api.include_router(feedback_router, prefix=app_cfg.API_ROUTER_PATH_PREFIX)
 
 if __name__ == '__main__':
     uvicorn.run(

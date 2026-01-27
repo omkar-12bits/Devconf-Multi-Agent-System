@@ -2,21 +2,21 @@
 
 This project is a multi-agent system built with **Google ADK (Agent Development Kit)** and **FastAPI**. It features a supervisor orchestrator that intelligently routes user queries to specialized remote agents (Google Search and GitHub Search).
 
-## 🚀 Features
+## Features
 
 - **Supervisor Agent**: Routes queries based on intent (Google Search vs. GitHub).
 - **Remote Agents**: Specialized agents running as separate services via the Agent-to-Agent (A2A) protocol.
-- **Input Guardrails**: Optional safety checks using Granite Guardian.
-- **Session Management**: Supports both in-memory and database-backed conversation history.
+- **Input Guardrails**: Optional safety checks using LLM-based content moderation.
+- **Session Management**: In-memory conversation history.
 - **Observability**: Integrated with Langfuse for tracing.
 
-## 📋 Prerequisites
+## Prerequisites
 
 - **Python 3.13+**
 - **Poetry** (Dependency Manager)
 - **Google API Key** (for Gemini models)
 
-## 🛠️ Installation
+## Installation
 
 1. **Clone the repository:**
    ```bash
@@ -29,6 +29,11 @@ This project is a multi-agent system built with **Google ADK (Agent Development 
    poetry install
    ```
 
+Activate the virtual environment:
+```sh
+eval $(poetry env activate)
+```
+
 3. **Configure Environment Variables:**
    Copy the sample configuration file and update it with your credentials.
    ```bash
@@ -40,7 +45,7 @@ This project is a multi-agent system built with **Google ADK (Agent Development 
    - `GOOGLE_SEARCH_AGENT_BASE_URL`: Set to `http://localhost:8001` for local development.
    - `GITHUB_AGENT_BASE_URL`: Set to `http://localhost:8002` for local development.
 
-## 🏃‍♂️ Running the Application
+## Running the Application
 
 The system consists of three separate services that need to be run simultaneously. You can run them in separate terminal windows.
 
@@ -56,10 +61,14 @@ poetry run uvicorn remote_agents.github_search_agent.agent:app --port 8002 --rel
 
 ### 3. Start the Orchestrator API (Port 8000)
 ```bash
+# Option 1: Using uvicorn directly
 poetry run uvicorn src.orchestrator.main:api --port 8000 --reload
+
+# Option 2: Using ADK Web
+adk web --port 8000
 ```
 
-## 📖 API Documentation
+## API Documentation
 
 Once the Orchestrator is running, you can access the interactive API documentation (Swagger UI) at:
 
@@ -70,7 +79,7 @@ Once the Orchestrator is running, you can access the interactive API documentati
 - **POST /api/devconf/v1/conversation/{id}/message**: Send a message to the agent.
 - **GET /api/devconf/v1/meta/status**: Check the health of all system components.
 
-## 🧪 Testing
+## Testing
 
 You can test the system using the Swagger UI or `curl`.
 
@@ -96,7 +105,7 @@ curl -X 'POST' \
 }'
 ```
 
-## 🏗️ Project Structure
+## Project Structure
 
 - `src/orchestrator`: Main API and Supervisor Agent logic.
 - `remote_agents/`: Standalone agent services (Google Search, GitHub).

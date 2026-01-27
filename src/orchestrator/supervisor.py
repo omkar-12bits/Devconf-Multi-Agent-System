@@ -196,7 +196,11 @@ class SupervisorAgent:
                 StateDefaults.DETECTED_LANGUAGE
             )
             set_state_value(callback_context.state, StateKeys.DETECTED_LANGUAGE, detected_language)
-            return None
+            set_state_value(callback_context.state, StateKeys.FINAL_RESPONSE, error_message)
+            return types.Content(
+                role="model",
+                parts=[types.Part(text=error_message)]
+            )
         
         routing_agent_response = self.extract_current_turn_response(callback_context)        
         if not routing_agent_response or routing_agent_response.strip() == "":

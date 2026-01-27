@@ -1,107 +1,163 @@
-# File copied from ifd/core/safety/guardrails.py
-import asyncio
+"""
+Content safety guardrails using OpenAI-compatible LLM (gpt-oss-120b).
+"""
+import json
 import logging
-from typing import List, Tuple
+from dataclasses import dataclass
+from enum import Enum
+from typing import Literal, Optional
 from uuid import UUID
 
 import httpx
 from langfuse import Langfuse
 from openai import AsyncOpenAI
-from openai.types.chat.chat_completion import ChatCompletion
+from pydantic import BaseModel, Field
 
 from orchestrator.config import app_cfg
-from orchestrator.safety.guardrails_types import RiskProbability
-from orchestrator.safety.granite_guardian_helpers import parse_output
-from orchestrator.safety.canned_responses import PredefinedResponses
+from orchestrator.constants import DEFAULT_LANGUAGE
+from orchestrator.instructions import GUARDRAILS_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
 
-_guardian_client: AsyncOpenAI = AsyncOpenAI(
-    base_url=app_cfg.GRANITE_GUARDIAN_HOST,
-    api_key=app_cfg.GRANITE_GUARDIAN_API_KEY,
-    http_client=httpx.AsyncClient(verify=False, timeout=10),
-)
-
-GRANITE_GUARDIAN_RISK_THRESHOLD: float = 0.80
-GRANITE_GUARDIAN_LEETSPEAK_THRESHOLD: float = 0.65
-GRANITE_GUARDIAN_ROLEPLAY_THRESHOLD: float = 0.65
-GRANITE_GUARDIAN_AMNESIA_THRESHOLD: float = 0.65
-
-
-ROLEPLAY_JAILBREAK_RISK_NAME = "Roleplay Jailbreak"
-ROLEPLAY_JAILBREAK_RISK_DEFINITION = "User attempts to make the AI impersonate a specific character or entity (e.g., 'Dr. House', 'dead granny'). This is a risk as it often aims to circumvent safety guidelines or generate restricted content."
-
-LEET_SPEAK_RISK_NAME = "Leet Speak"
-LEET_SPEAK_RISK_DEFINITION = "User engages in leetspeak or attempts to coerce model to output leetspeak"
-
-AMNESIA_RISK_NAME = "Amnesia Risk"
-AMNESIA_RISK_DEFINITION = "User tricks the model to forget any instructions."
-
-RISK_THRESHOLDS = {
-    LEET_SPEAK_RISK_NAME: GRANITE_GUARDIAN_LEETSPEAK_THRESHOLD,
-    ROLEPLAY_JAILBREAK_RISK_NAME: GRANITE_GUARDIAN_ROLEPLAY_THRESHOLD,
-    AMNESIA_RISK_NAME: GRANITE_GUARDIAN_AMNESIA_THRESHOLD,
-}
+# Schema for structured JSON response from the guardrails model
+class GuardrailResponseSchema(BaseModel):
+    """JSON schema for guardrails response."""
+    decision: Literal["SAFE", "UNSAFE"] = Field(description="Safety decision")
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score 0.0-1.0")
+    violation_type: Literal[
+        "none", "dangerous_content", "hate_speech", 
+        "explicit_content", "jailbreak", "malicious_intent"
+    ] = Field(description="Violation type or 'none'")
+    reasoning: str = Field(description="Brief explanation")
+    detected_language: str = Field(description="Detected language of user input")
 
 
-async def _check_single_risk(
-    prompt: str,
-    risk_name: str,
-    risk_definition: str,
-    session_id: str,
-    message_id: UUID,
-    langfuse_client: Langfuse,
-) -> Tuple[str, RiskProbability | None, Exception | None]:
-    """Check a single risk category.
+class GuardrailDecision(str, Enum):
+    SAFE = "SAFE"
+    UNSAFE = "UNSAFE"
+    ERROR = "ERROR"
 
-    Args:
-        prompt: User input to check
-        risk_name: Name of the risk category
-        risk_definition: Definition of the risk category
-        session_id: Llama Stack session Id
-        message_id: Message Id for user input
 
-    Returns:
-        Tuple of (risk_name, verdict or None, exception or None)
-    """
-    with langfuse_client.start_as_current_observation(as_type="span", name=risk_name, input=prompt) as span:
+class ViolationType(str, Enum):
+    NONE = "none"
+    DANGEROUS_CONTENT = "dangerous_content"
+    HATE_SPEECH = "hate_speech"
+    EXPLICIT_CONTENT = "explicit_content"
+    JAILBREAK = "jailbreak"
+    MALICIOUS_INTENT = "malicious_intent"
+
+
+@dataclass
+class GuardrailResult:
+    decision: GuardrailDecision
+    confidence: float
+    violation_type: ViolationType
+    reasoning: str
+    blocked: bool
+    detected_language: Optional[str] = None
+
+
+class GuardrailResultFactory:
+    @staticmethod
+    def safe() -> GuardrailResult:
+        return GuardrailResult(
+            decision=GuardrailDecision.SAFE,
+            confidence=1.0,
+            violation_type=ViolationType.NONE,
+            reasoning="Content is safe",
+            blocked=False,
+            detected_language=DEFAULT_LANGUAGE
+        )
+    
+    @staticmethod
+    def error(error: str) -> GuardrailResult:
+        return GuardrailResult(
+            decision=GuardrailDecision.ERROR,
+            confidence=0.0,
+            violation_type=ViolationType.NONE,
+            reasoning=f"Guardrails error: {error}",
+            blocked=False,
+            detected_language=DEFAULT_LANGUAGE
+        )
+    
+    @staticmethod
+    def blocked(
+        violation_type: ViolationType,
+        reasoning: str,
+        confidence: float = 1.0,
+        detected_language: Optional[str] = None
+    ) -> GuardrailResult:
+        return GuardrailResult(
+            decision=GuardrailDecision.UNSAFE,
+            confidence=confidence,
+            violation_type=violation_type,
+            reasoning=reasoning,
+            blocked=True,
+            detected_language=detected_language or DEFAULT_LANGUAGE
+        )
+
+
+def _parse_guardrail_response(response_text: str) -> GuardrailResult:
+    """Parse the LLM response into a structured result."""
+    try:
+        data = json.loads(response_text)
+        decision = GuardrailDecision(data.get("decision", "SAFE").upper())
+        confidence = float(data.get("confidence", 1.0))
+        violation_type_str = data.get("violation_type", "none").lower()
+        reasoning = data.get("reasoning", "")
+        detected_language = data.get("detected_language", DEFAULT_LANGUAGE)
+        
         try:
-            guardian_config = {
-                "guardian_config": {
-                    "risk_name": risk_name,
-                    "risk_definition": risk_definition,
-                }
-            }
+            violation_type = ViolationType(violation_type_str)
+        except ValueError:
+            violation_type = ViolationType.NONE
+        
+        return GuardrailResult(
+            decision=decision,
+            confidence=confidence,
+            violation_type=violation_type,
+            reasoning=reasoning,
+            blocked=False,
+            detected_language=detected_language
+        )
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse guardrails response as JSON: {e}")
+        return GuardrailResultFactory.safe()
+    except Exception as e:
+        logger.warning(f"Error parsing guardrails response: {e}")
+        return GuardrailResultFactory.safe()
 
-            guardian_resp: ChatCompletion = await _guardian_client.chat.completions.create(
-                model=app_cfg.GRANITE_SHIELD_ID,
-                temperature=0.0,
-                logprobs=True,
-                top_logprobs=20,
-                messages=[{"role": "user", "content": prompt}],
-                extra_body={
-                    "chat_template_kwargs": guardian_config,
-                },
-            )
 
-            verdict = parse_output(guardian_resp)
-            span.update(output=verdict)
-            return (risk_name, verdict, None)
-        # Throw Value Error if parse_output fails for whatever reason
-        except ValueError as e:
-            logger.error(
-                f"Guardian parse error for {risk_name}: {e} ls_session_id={session_id} message_id={message_id}"
-            )
-            span.update(output=str(e), level="ERROR")
-            return (risk_name, None, e)
-        # Log error but don't stop the flow if request failed since we are running in parallel
-        except Exception as exc:
-            logger.exception(
-                f"Guardian request failed for {risk_name}: ls_session_id={session_id} message_id={message_id}"
-            )
-            span.update(output=str(exc), level="ERROR")
-            return (risk_name, None, exc)
+async def check_content_safety(
+    user_query: str,
+    client: AsyncOpenAI,
+) -> GuardrailResult:
+    """Check content safety using the guardrails model."""    
+    try:
+        prompt = GUARDRAILS_INSTRUCTION.format(user_query=user_query)
+        
+        response = await client.chat.completions.create(
+            model=app_cfg.GUARDRAILS_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            response_format={"type": "json_object"}
+        )
+        
+        if not response.choices:
+            return GuardrailResultFactory.safe()
+        
+        response_text = response.choices[0].message.content.strip()
+        result = _parse_guardrail_response(response_text)
+        
+        if result.decision == GuardrailDecision.UNSAFE:
+            result.blocked = result.confidence >= app_cfg.GUARDRAILS_CONFIDENCE_THRESHOLD
+            
+        return result
+        
+    except Exception as e:
+        logger.error(f"Guardrails check failed: {e}")
+        return GuardrailResultFactory.error(str(e))
 
 
 async def apply_input_guard(
@@ -110,83 +166,59 @@ async def apply_input_guard(
     message_id: UUID,
     langfuse_client: Langfuse,
 ) -> str:
-    """Applies the input safety with Granite Guardian and return it unchanged or
-    raise SafetyViolationError exception when the request is deemed 'harm'.
+    """Apply input guardrails and return prompt if safe, raise Exception if unsafe.
 
     Args:
-        prompt (str): User input.
-        session_id (str): Llama Stack session Id.
-        message_id (UUID): Message Id for user input.
+        prompt: User input to check.
+        session_id: Session ID for logging.
+        message_id: Message ID for logging.
+        langfuse_client: Langfuse client for tracing.
 
     Raises:
-        SafetyViolationError: Safety violation error.
+        Exception: If the content is blocked by guardrails.
 
     Returns:
-        str: Unchanged user input.
+        str: Unchanged user input if safe.
     """
-
-    if not app_cfg.GRANITE_GUARDIAN_HOST or not app_cfg.GRANITE_GUARDIAN_API_KEY or not app_cfg.GRANITE_SHIELD_ID:
-        logger.warning("Guardian host, shield, or API key is not configured, skipping input guard")
+    if not app_cfg.INPUT_GUARDRAILS_ENABLED:
+        logger.info("Guardrails disabled via config - skipping safety checks")
         return prompt
 
-    risk_categories = [
-        (ROLEPLAY_JAILBREAK_RISK_NAME, ROLEPLAY_JAILBREAK_RISK_DEFINITION),
-        (LEET_SPEAK_RISK_NAME, LEET_SPEAK_RISK_DEFINITION),
-        (AMNESIA_RISK_NAME, AMNESIA_RISK_DEFINITION),
-    ]
+    if not prompt or not prompt.strip():
+        return prompt
 
+    # Create async OpenAI client for guardrails
+    client = AsyncOpenAI(
+        base_url=app_cfg.OPENAI_COMPATIBLE_HOST,
+        api_key=app_cfg.OPENAI_API_KEY,
+        http_client=httpx.AsyncClient(verify=app_cfg.VERIFY_SSL, timeout=30),
+    )
 
-    # Run risk checks in parallel
-    check_tasks = [
-        _check_single_risk(prompt, risk_name, risk_definition, session_id, message_id, langfuse_client)
-        for risk_name, risk_definition in risk_categories
-    ]
-
-    results = await asyncio.gather(*check_tasks)
-
-
-    # Process results and populate safety_checks list
-    violations: List[Tuple[str, RiskProbability]] = []
-    guardian_unavailable = False
-
-    for risk_name, verdict, error in results:
-        if error is not None:
-            guardian_unavailable = True
-            continue
-
-        # Record all successful checks in the safety_checks list
-        if verdict:
-            threshold = RISK_THRESHOLDS.get(risk_name, GRANITE_GUARDIAN_RISK_THRESHOLD)
-
-            # Check if this is a violation
-            if verdict.is_risky and verdict.risky_confidence >= threshold:
-                violations.append((risk_name, verdict))
-
-    # If any guardian calls failed and we don't have at least one successful check, fail safe and throw error
-    # A successful check is one where the result's 3rd value (the error) is None
-    # 'result' Tuple: (risk_name, verdict, error)
-    successful_checks = [result for result in results if result[2] is None]
-    all_checks_failed = len(successful_checks) == 0
-    if guardian_unavailable and all_checks_failed:
-        raise Exception(PredefinedResponses.GUARDIAN_UNAVAILABLE_MESSAGE)
-
-    # If we have multiple violations, raise error for the most confident one
-    if violations:
-        # Sort by calculated confidence value and take the highest
-        violations.sort(key=lambda violation: violation[1].risky_confidence, reverse=True)
-        most_severe_risk_name, most_severe_verdict = violations[0]
-
-        logger.error(
-            f"Safety Violation: violation_type={most_severe_risk_name} "
-            f"confidence={most_severe_verdict.risky_confidence} "
-            f"threshold={RISK_THRESHOLDS.get(most_severe_risk_name, GRANITE_GUARDIAN_RISK_THRESHOLD)} "
-            f"ls_session_id={session_id} message_id={message_id} "
-        )
-        
-        # Raise with user-friendly canned response
-        raise Exception(PredefinedResponses.DEFAULT_SAFETY_VIOLATION_MESSAGE)
-    
-    logger.info(f"Input guard passed for message content: {prompt}, results: {results}")
-    return prompt
-
-
+    with langfuse_client.start_as_current_observation(
+        as_type="span", 
+        name="content_safety_check", 
+        input=prompt
+    ) as span:
+        try:
+            result = await check_content_safety(prompt, client)
+            
+            span.update(output={
+                "decision": result.decision.value,
+                "confidence": result.confidence,
+                "violation_type": result.violation_type.value,
+                "reasoning": result.reasoning,
+                "blocked": result.blocked,
+                "detected_language": result.detected_language
+            })
+            
+            if result.decision == GuardrailDecision.UNSAFE and result.blocked:
+                raise Exception("I can't answer that. This query appears to violate our content policy. You can ask a question related to google search and github search.")
+            return prompt
+            
+        except Exception as e:
+            if "content policy" in str(e).lower() or "safety violation" in str(e).lower():
+                raise
+            logger.error(f"Guardrails check failed: {e}")
+            span.update(output=str(e), level="ERROR")
+            # On error, allow the request through (fail open)
+            return prompt

@@ -64,7 +64,7 @@ class LangfuseProvider:
                         "Langfuse authentication failed. Please verify your LANGFUSE_PUBLIC_KEY "
                         "and LANGFUSE_SECRET_KEY."
                     )
-                logger.info("✅ Langfuse client initialized and authenticated.")
+                logger.info("Langfuse client initialized and authenticated.")
             except LangfuseSetupError:
                 raise
             except Exception as e:
