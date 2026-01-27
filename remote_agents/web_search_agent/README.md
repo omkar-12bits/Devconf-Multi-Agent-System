@@ -20,13 +20,13 @@ pip install google-adk[a2a] uvicorn
 You can run the agent server using the following command:
 
 ```bash
-python -m remote_agents.google_search_agent.agent
+python -m remote_agents.web_search_agent.agent
 ```
 
 Or directly with uvicorn:
 
 ```bash
-uvicorn remote_agents.google_search_agent.agent:app --port 8001 --reload
+uvicorn remote_agents.web_search_agent.agent:app --port 8001 --reload
 ```
 
 ## Usage

@@ -75,7 +75,7 @@ User's query has been preprocessed (language detection + English translation if 
 CRITICAL: Use the "Preprocessed Query" above for your routing decision.
 
 AVAILABLE SUB-AGENTS:
-1. google_search_agent - Specializes in Google search results
+1. web_search_agent - Specializes in Web search results
    Keywords: google, search, results, search results, search engine, search engine results, search engine results page, search engine results page results, search engine results page results results
    Query patterns:
    - "search for X"
@@ -92,7 +92,7 @@ AVAILABLE SUB-AGENTS:
    - "search for X"
 
 ROUTING RULES:
-1. For Google related queries (documentation, how-to, knowledge) → delegate to google_search_agent
+1. For Web related queries (documentation, how-to, knowledge) → delegate to web_search_agent
 2. For GitHub related queries (documentation, how-to, knowledge) → delegate to github_agent
 3. When uncertain what the query is about, ask the user for more information
 
@@ -134,11 +134,11 @@ IMPORTANT:
 
 Provide the final response in {{{StateKeys.DETECTED_LANGUAGE.value}}} that will be shown to the user."""
 
-GOOGLE_SEARCH_AGENT_DESCRIPTION = "Specialist agent that answers general questions about Google search results."
+WEB_SEARCH_AGENT_DESCRIPTION = "Specialist agent that answers general questions about web search results."
 
 GITHUB_AGENT_DESCRIPTION = "Specialist agent that answers general questions about GitHub repositories, issues, and pull requests."
 
-GUARDRAILS_INSTRUCTION = """You are a safety guardrail for a multi-agent AI assistant that routes queries to Google Search and GitHub Search agents.
+GUARDRAILS_INSTRUCTION = """You are a safety guardrail for a multi-agent AI assistant that routes queries to Web Search and GitHub Search agents.
 
 Your task: Analyze user input and determine if it is SAFE to process. Be PERMISSIVE - this system can answer a wide variety of questions.
 
@@ -161,7 +161,7 @@ Your task: Analyze user input and determine if it is SAFE to process. Be PERMISS
 - General knowledge questions (science, history, geography, current events).
 - Technical questions (programming, software, DevOps, cloud, databases).
 - GitHub-related queries (repositories, code, issues, pull requests, developers).
-- Google search queries (news, information, how-to guides, tutorials).
+- Web search queries (news, information, how-to guides, tutorials).
 - Educational content about security (defensive, learning purposes).
 - Everyday topics (weather, recipes, sports, entertainment, travel).
 - Business and professional questions.
@@ -177,7 +177,7 @@ Examples of SAFE queries (Allow):
 - "What is the weather in New York?" -> General question.
 - "How do I create a Python web server?" -> Technical question.
 - "Search GitHub for machine learning projects" -> GitHub search.
-- "What are the latest AI news?" -> Google search.
+- "What are the latest AI news?" -> Web search.
 - "Explain how SQL injection works" -> Educational security.
 - "Best restaurants in San Francisco" -> General search.
 - "How to configure Kubernetes pods?" -> Technical DevOps.

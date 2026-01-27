@@ -14,11 +14,11 @@ class ApiConfig(BaseSettings):
     PREPROCESSING_MODEL: str = "openai/gpt-oss-20b"
 
     # Agent Card Configuration (Local JSON files for governance)
-    GOOGLE_SEARCH_AGENT_CARD_FILE: str = "src/orchestrator/agent_cards/google_search_agent_card.json"
+    WEB_SEARCH_AGENT_CARD_FILE: str = "src/orchestrator/agent_cards/web_search_agent_card.json"
     GITHUB_AGENT_CARD_FILE: str = "src/orchestrator/agent_cards/github_agent_card.json"
     
     # Agent Base URLs (Optional - for syncing or fallback)
-    GOOGLE_SEARCH_AGENT_MODEL: str = ""
+    WEB_SEARCH_AGENT_MODEL: str = ""
     GITHUB_SEARCH_AGENT_MODEL: str = ""
     
     VERIFY_SSL: bool = False

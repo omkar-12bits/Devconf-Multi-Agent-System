@@ -6,7 +6,7 @@ from orchestrator.instructions import (
     PREPROCESSING_INSTRUCTION,
     ROUTING_AGENT_INSTRUCTION,
     POSTPROCESS_AGENT_INSTRUCTION,
-    GOOGLE_SEARCH_AGENT_DESCRIPTION,
+    WEB_SEARCH_AGENT_DESCRIPTION,
     GITHUB_AGENT_DESCRIPTION
 )
 from orchestrator.summarizing_a2a_agent import SummarizingRemoteA2aAgent
@@ -45,10 +45,10 @@ class SupervisorAgent:
             api_base=self.app_cfg.OPENAI_COMPATIBLE_HOST,
             api_key=self.app_cfg.OPENAI_API_KEY
         )
-        self.google_search_agent = self._create_a2a_agent(
-            name=AgentNames.GOOGLE_SEARCH_AGENT.value,
-            description=GOOGLE_SEARCH_AGENT_DESCRIPTION,
-            agent_card_file=self.app_cfg.GOOGLE_SEARCH_AGENT_CARD_FILE
+        self.web_search_agent = self._create_a2a_agent(
+            name=AgentNames.WEB_SEARCH_AGENT.value,
+            description=WEB_SEARCH_AGENT_DESCRIPTION,
+            agent_card_file=self.app_cfg.WEB_SEARCH_AGENT_CARD_FILE
         )
         
         self.github_agent = self._create_a2a_agent(
@@ -61,7 +61,7 @@ class SupervisorAgent:
             name=AgentNames.ROUTING_AGENT.value,
             model=self.model,
             instruction=ROUTING_AGENT_INSTRUCTION,
-            sub_agents=[self.google_search_agent, self.github_agent],
+            sub_agents=[self.web_search_agent, self.github_agent],
             before_agent_callback=self.before_routing_callback,
             planner=BuiltInPlanner(
                 thinking_config=types.ThinkingConfig(

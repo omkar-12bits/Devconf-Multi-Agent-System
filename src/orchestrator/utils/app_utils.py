@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 AGENT_PROGRESS_MESSAGES = {
     AgentNames.ROUTING_AGENT.value: "Routing your question...",
-    AgentNames.GOOGLE_SEARCH_AGENT.value: "Searching Google...",
+    AgentNames.WEB_SEARCH_AGENT.value: "Searching the web...",
     AgentNames.GITHUB_AGENT.value: "Searching GitHub...",
 }
 
