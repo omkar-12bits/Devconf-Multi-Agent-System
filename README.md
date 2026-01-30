@@ -29,10 +29,10 @@ This project is a multi-agent system built with **Google ADK (Agent Development 
    poetry install
    ```
 
-Activate the virtual environment:
-```sh
-eval $(poetry env activate)
-```
+   Activate the virtual environment:
+   ```sh
+   eval $(poetry env activate)
+   ```
 
 3. **Configure Environment Variables:**
    Copy the sample configuration file and update it with your credentials.
@@ -44,6 +44,39 @@ eval $(poetry env activate)
    - `GOOGLE_API_KEY`: Your Google Gemini API key.
    - `GOOGLE_SEARCH_AGENT_BASE_URL`: Set to `http://localhost:8001` for local development.
    - `GITHUB_AGENT_BASE_URL`: Set to `http://localhost:8002` for local development.
+
+## Langfuse Observability (Optional)
+```bash
+# start the container
+podman compose -f langfuse.yaml --env-file /dev/null up -d
+
+# stop the container
+podman compose -f langfuse.yaml down
+
+# view logs
+podman compose -f langfuse.yaml logs -f
+```
+To get API keys from local instance follow these steps:
+  - After sign up create a new org
+  - Click on the Next button and create a new project
+  - Configure Tracing -> Create new API key
+  - After adding those API keys to your .env file you will start seeing LLM traces under the Tracing section.
+
+If you face any issues/ error messages using langfuse UI:
+  - Podman allocates less memory by default, which causes OOM erros when running Langfuse.
+  - You can check your current memory limit using `podman machine inspect | grep -i memory`
+  - You can set the limit using `podman machine set --memory 8192`
+  - To run the above command you have to stop the running podman instance.
+  ```bash
+  # 1. Stop the machine
+  podman machine stop
+  # 2. Change the memory setting
+  podman machine set --memory 8192
+  # 3. Start the machine again
+  podman machine start
+  ```
+
+> You can keep the fields empty or remove fields from env file if not using observability.
 
 ## Running the Application
 
