@@ -1,8 +1,10 @@
 import json
 import logging
 import os
-import httpx
 from typing import Dict, Any, Optional
+
+import httpx
+from google.adk.tools import FunctionTool
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,7 @@ headers = {
     "User-Agent": "GitHub-Project-Analyst-Agent",
     "Authorization": f"token {GITHUB_TOKEN}"
 }
+
 
 def _make_github_request(endpoint: str, params: Optional[Dict] = None) -> Dict[str, Any]:
     """Make a request to GitHub API"""
@@ -170,7 +173,6 @@ def get_repository_issues(owner: str, repo: str, state: str = "open", per_page: 
     
     return json.dumps(issues, indent=2)
 
-
 def get_repository_pulls(owner: str, repo: str, state: str = "open", per_page: int = 20) -> str:
     """
     Get pull requests from a repository
@@ -211,7 +213,6 @@ def get_repository_pulls(owner: str, repo: str, state: str = "open", per_page: i
     
     return json.dumps(pulls, indent=2)
 
-
 def get_repository_releases(owner: str, repo: str, per_page: int = 20) -> str:
     """
     Get releases from a repository
@@ -246,7 +247,6 @@ def get_repository_releases(owner: str, repo: str, per_page: int = 20) -> str:
         })
     
     return json.dumps(releases, indent=2)
-
 
 def search_repositories(query: str, sort: str = "stars", order: str = "desc", per_page: int = 10) -> str:
     """
@@ -295,3 +295,14 @@ def search_repositories(query: str, sort: str = "stars", order: str = "desc", pe
         })
     
     return json.dumps(results, indent=2)
+
+
+GITHUB_TOOLS = [
+    FunctionTool(func=get_repository_info),
+    FunctionTool(func=get_repository_languages),
+    FunctionTool(func=get_repository_contributors),
+    FunctionTool(func=get_repository_issues),
+    FunctionTool(func=get_repository_pulls),
+    FunctionTool(func=get_repository_releases),
+    FunctionTool(func=search_repositories)
+]

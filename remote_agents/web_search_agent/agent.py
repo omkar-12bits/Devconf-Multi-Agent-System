@@ -1,13 +1,13 @@
 import logging
 import os
+
 import uvicorn
 from google.adk.agents.llm_agent import LlmAgent
-from google.adk.tools import FunctionTool
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
 from remote_agents.web_search_agent.prompt import WEB_SEARCH_AGENT_PROMPT
-from remote_agents.web_search_agent.tools import search_web
+from remote_agents.web_search_agent.tools import search_web_tool
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def create_agent():
         name="web_search_agent",
         instruction=WEB_SEARCH_AGENT_PROMPT,
         model=model,
-        tools=[FunctionTool(func=search_web)]
+        tools=[search_web_tool]
     )
     return agent
 

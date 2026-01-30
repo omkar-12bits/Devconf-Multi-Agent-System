@@ -1,7 +1,9 @@
 import json
 import logging
 import os
+
 from tavily import TavilyClient
+from google.adk.tools import FunctionTool
 
 logger = logging.getLogger(__name__)
 
@@ -55,3 +57,5 @@ def search_web(query: str, max_results: int = 5, search_depth: str = "basic") ->
         return json.dumps({
             "error": f"Error searching the web: {e}"
         })
+
+search_web_tool = FunctionTool(func=search_web)

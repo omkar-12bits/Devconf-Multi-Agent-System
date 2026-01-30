@@ -1,12 +1,12 @@
 import os
+
 import uvicorn
 from google.adk.agents.llm_agent import LlmAgent
-from google.adk.tools import FunctionTool
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
 from remote_agents.github_search_agent.prompt import GITHUB_SEARGCH_AGENT_PROMPT
-from remote_agents.github_search_agent.tools import get_repository_info, get_repository_languages, get_repository_contributors, get_repository_issues, get_repository_pulls, get_repository_releases, search_repositories
+from remote_agents.github_search_agent.tools import GITHUB_TOOLS
 
 def create_agent():
     # Initialize the model
@@ -23,9 +23,7 @@ def create_agent():
         name="github_search_agent",
         instruction=GITHUB_SEARGCH_AGENT_PROMPT,
         model=model,
-        tools=[FunctionTool(func=get_repository_info), FunctionTool(func=get_repository_languages), FunctionTool(func=get_repository_contributors),
-        FunctionTool(func=get_repository_issues), FunctionTool(func=get_repository_pulls), FunctionTool(func=get_repository_releases), FunctionTool(func=search_repositories)
-        ]
+        tools=[*GITHUB_TOOLS]    # Unpack the list of tools into tools list
     )
     return agent
 
